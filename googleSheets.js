@@ -47,26 +47,35 @@ export async function fetchProjectsFromSheet() {
       try {
         const sheetName = `${aliado} - operativo`;
         console.log(`  📖 Leyendo ${sheetName}...`);
-        const operativoData = await getSheetData(sheetName, 'A:C');
+        const operativoData = await getSheetData(sheetName, 'A:F');
 
         if (operativoData.length > 0) {
+          // Buscar datos en columnas A:B
           const web = operativoData.find(r => r[0]?.includes('Página Web'))?.[1] || '';
+          const celular = operativoData.find(r => r[0]?.includes('Celular'))?.[1] || '';
           const objective = operativoData.find(r => r[0]?.includes('Objetivo'))?.[1] || '';
+          const personalBrand = operativoData.find(r => r[0]?.includes('Estrategia'))?.[1] || '';
+
+          // Buscar redes en columnas E:F
+          const facebook = operativoData.find(r => r[4]?.includes('Facebook'))?.[5] || '';
+          const instagram = operativoData.find(r => r[4]?.includes('Instagram'))?.[5] || '';
+          const tiktok = operativoData.find(r => r[4]?.includes('TikTok'))?.[5] || '';
+          const redes = [facebook, instagram, tiktok].filter(r => r).join(', ');
 
           projects.push({
             id: projectId,
             name: aliado,
             icon: '📋',
             userId: 1,
-            aliado: { name: aliado, web, celular: '', redes: '' },
+            aliado: { name: aliado, web, celular, redes },
             buyerPersona: { profile: '', age: '', concerns: '', behavior: '' },
-            strategy: { personalBrand: '', competition: '', objective }
+            strategy: { personalBrand, competition: '', objective }
           });
           projectId++;
-          console.log(`    ✅ ${aliado} cargado`);
+          console.log(`    ✅ ${aliado} cargado - Web: ${web}, Celular: ${celular}`);
         }
       } catch (error) {
-        console.warn(`    ⚠️ No se cargó ${aliado}`);
+        console.warn(`    ⚠️ No se cargó ${aliado}:`, error.message);
       }
     }
 
