@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { google } from 'googleapis';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { fetchProjectsFromSheet, fetchTasksFromSheet, fetchActivitiesFromSheet } from './googleSheets.js';
 
 dotenv.config();
 
@@ -24,129 +25,87 @@ let users = [];
 let projects = [];
 let tasks = [];
 
-// Inicializar datos de demostración
-function initializeData() {
-  const hashedPassword = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
-  users = [
-    {
-      id: 1,
-      name: 'Ailín',
-      email: process.env.ADMIN_EMAIL,
-      password: hashedPassword,
-      role: 'admin'
-    }
-  ];
+// Inicializar datos desde Google Sheets
+async function initializeData() {
+  try {
+    const hashedPassword = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
+    users = [
+      {
+        id: 1,
+        name: 'Ailín',
+        email: process.env.ADMIN_EMAIL,
+        password: hashedPassword,
+        role: 'admin'
+      }
+    ];
 
-  projects = [
-    {
-      id: 1,
-      name: 'Fumigaciones',
-      icon: '🔬',
-      userId: 1,
-      aliado: {
-        name: 'Fumigaciones Profesionales',
-        web: 'https://fumigacionespro.com',
-        celular: '+57 300 123 4567',
-        redes: '@fumigacionespro'
-      },
-      buyerPersona: {
-        profile: 'Propietarios de negocios y comercios',
-        age: '35-55 años',
-        concerns: 'Plagas, higiene, cumplimiento normativo',
-        behavior: 'Buscan soluciones rápidas y confiables'
-      },
-      strategy: {
-        personalBrand: 'Especialista en control de plagas',
-        competition: 'Empresas locales de fumigación',
-        objective: 'Aumentar clientes en un 40%'
-      }
-    },
-    {
-      id: 2,
-      name: 'OAC',
-      icon: '📋',
-      userId: 1,
-      aliado: {
-        name: 'OAC Solutions',
-        web: 'https://oac-solutions.com',
-        celular: '+57 301 987 6543',
-        redes: '@oac_solutions'
-      },
-      buyerPersona: {
-        profile: 'Empresas medianas y grandes',
-        age: 'Cualquier edad',
-        concerns: 'Eficiencia, cumplimiento, costos',
-        behavior: 'Analíticos, requieren reportes detallados'
-      },
-      strategy: {
-        personalBrand: 'Consultor en procesos',
-        competition: 'Consultoras internacionales',
-        objective: 'Posicionar como experto local'
-      }
-    },
-    {
-      id: 3,
-      name: 'Equilibrium',
-      icon: '⚖️',
-      userId: 1,
-      aliado: {
-        name: 'Equilibrium Consultoría',
-        web: 'https://equilibrium-co.com',
-        celular: '+57 302 456 7890',
-        redes: '@equilibrium_co'
-      },
-      buyerPersona: {
-        profile: 'Ejecutivos y gerentes',
-        age: '40-60 años',
-        concerns: 'Balance, bienestar, rentabilidad',
-        behavior: 'Buscan asesoramiento premium'
-      },
-      strategy: {
-        personalBrand: 'Coach empresarial especializado',
-        competition: 'Coaches internacionales',
-        objective: 'Crear membership de alto valor'
-      }
-    }
-  ];
+    console.log('📊 Cargando datos de Google Sheets...');
 
-  tasks = [
-    {
-      id: 1,
-      projectId: 1,
-      description: 'Crear contenido para redes sociales',
-      progress: 65,
-      onTime: true,
-      hours: 8,
-      dueDate: '2026-04-20'
-    },
-    {
-      id: 2,
-      projectId: 1,
-      description: 'Diseñar landing page',
-      progress: 45,
-      onTime: false,
-      hours: 12,
-      dueDate: '2026-04-18'
-    },
-    {
-      id: 3,
-      projectId: 2,
-      description: 'Análisis de mercado',
-      progress: 80,
-      onTime: true,
-      hours: 10,
-      dueDate: '2026-04-22'
-    },
-    {
-      id: 4,
-      projectId: 3,
-      description: 'Preparar propuesta comercial',
-      progress: 30,
-      onTime: false,
-      hours: 15,
-      dueDate: '2026-04-17'
-    }
-  ];
+    // Cargar proyectos desde Google Sheets
+    projects = await fetchProjectsFromSheet();
+    console.log(`✅ ${projects.length} proyectos cargados`);
+
+    // Cargar tareas desde Google Sheets
+    tasks = await fetchTasksFromSheet();
+    console.log(`✅ ${tasks.length} tareas cargadas`);
+
+    console.log('🎉 Datos cargados exitosamente desde Google Sheets');
+  } catch (error) {
+    console.error('❌ Error al cargar datos de Google Sheets:', error.message);
+    console.error('Stack:', error.stack);
+    console.log('⚠️ USANDO DATOS DE DEMOSTRACIÓN COMO FALLBACK');
+    console.log('⚠️ Verifica que GOOGLE_SHEET_ID y GOOGLE_API_KEY estén correctamente configurados');
+
+    // Fallback a datos de demostración si Google Sheets falla
+    const hashedPassword = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
+    users = [
+      {
+        id: 1,
+        name: 'Ailín',
+        email: process.env.ADMIN_EMAIL,
+        password: hashedPassword,
+        role: 'admin'
+      }
+    ];
+
+    projects = [
+      {
+        id: 1,
+        name: 'Fumigaciones',
+        icon: '🔬',
+        userId: 1,
+        aliado: {
+          name: 'Fumigaciones Profesionales',
+          web: 'https://fumigacionespro.com',
+          celular: '+57 300 123 4567',
+          redes: '@fumigacionespro'
+        },
+        buyerPersona: {
+          profile: 'Propietarios de negocios y comercios',
+          age: '35-55 años',
+          concerns: 'Plagas, higiene, cumplimiento normativo',
+          behavior: 'Buscan soluciones rápidas y confiables'
+        },
+        strategy: {
+          personalBrand: 'Especialista en control de plagas',
+          competition: 'Empresas locales de fumigación',
+          objective: 'Aumentar clientes en un 40%'
+        }
+      }
+    ];
+
+    tasks = [
+      {
+        id: 1,
+        projectId: 1,
+        description: 'Crear contenido para redes sociales',
+        progress: 65,
+        onTime: true,
+        hours: 8,
+        dueDate: '2026-04-20'
+      }
+    ];
+  }
 }
 
 // Rutas de Autenticación
@@ -271,7 +230,14 @@ app.use((err, req, res, next) => {
 });
 
 // Iniciar servidor
-initializeData();
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
+async function startServer() {
+  await initializeData();
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
+  });
+}
+
+startServer().catch(error => {
+  console.error('Error al iniciar servidor:', error);
+  process.exit(1);
 });
