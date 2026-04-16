@@ -49,6 +49,11 @@ export async function fetchProjectsFromSheet() {
         console.log(`  📖 Leyendo ${sheetName}...`);
         const operativoData = await getSheetData(sheetName, 'A:F');
 
+        console.log(`    📋 Filas leídas: ${operativoData.length}`);
+        operativoData.slice(0, 15).forEach((row, idx) => {
+          console.log(`      [Fila ${idx}] A:"${row[0] || ''}" | B:"${row[1] || ''}" | E:"${row[4] || ''}" | F:"${row[5] || ''}"`);
+        });
+
         if (operativoData.length > 0) {
           // Buscar datos en columnas A:B
           const web = operativoData.find(r => r[0]?.includes('Página Web'))?.[1] || '';
@@ -62,6 +67,8 @@ export async function fetchProjectsFromSheet() {
           const tiktok = operativoData.find(r => r[4]?.includes('TikTok'))?.[5] || '';
           const redes = [facebook, instagram, tiktok].filter(r => r).join(', ');
 
+          console.log(`    Datos encontrados: Web="${web}", Celular="${celular}", Marca="${personalBrand}"`);
+
           projects.push({
             id: projectId,
             name: aliado,
@@ -72,7 +79,7 @@ export async function fetchProjectsFromSheet() {
             strategy: { personalBrand, competition: '', objective }
           });
           projectId++;
-          console.log(`    ✅ ${aliado} cargado - Web: ${web}, Celular: ${celular}`);
+          console.log(`    ✅ ${aliado} cargado`);
         }
       } catch (error) {
         console.warn(`    ⚠️ No se cargó ${aliado}:`, error.message);
