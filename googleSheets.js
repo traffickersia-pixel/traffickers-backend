@@ -51,11 +51,11 @@ export async function fetchProjectsFromSheet() {
 
         if (operativoData.length > 0) {
           // Helper para buscar etiquetas (case-insensitive, trim)
-          const findValue = (keyword, colB = 1) => {
+          const findValue = (keyword, colIndex = 1) => {
             const row = operativoData.find(r =>
               r[0]?.toLowerCase().trim().includes(keyword.toLowerCase())
             );
-            return row?.[colB] || '';
+            return row?.[colIndex] || '';
           };
 
           // Buscar datos en columnas A:B
@@ -65,13 +65,25 @@ export async function fetchProjectsFromSheet() {
           const objective = findValue('objetivo', 1);
           const personalBrand = findValue('estrategia', 1);
 
-          // Buscar redes en columnas E:F (column index 4:5)
+          // Debug: mostrar todas las filas para encontrar redes sociales
+          console.log(`    📊 Estructura de ${sheetName}:`);
+          operativoData.slice(0, 20).forEach((row, idx) => {
+            if (row[0] || row[4]) {
+              console.log(`      [${idx}] A="${row[0] || ''}" | E="${row[4] || ''}" | F="${row[5] || ''}"`);
+            }
+          });
+
+          // Buscar redes en columnas E:F (column index 4:5) - buscar en la columna E
           const facebook = findValue('facebook', 5);
           const instagram = findValue('instagram', 5);
           const tiktok = findValue('tiktok', 5);
-          const redes = [facebook, instagram, tiktok].filter(r => r && r.trim()).join(', ');
+          const youtube = findValue('youtube', 5);
+          const whatsapp = findValue('whatsapp', 5);
 
-          console.log(`    ✅ ${aliado}: Web="${web}", Tel="${celular}", Marca="${personalBrand}"`);
+          const redesArray = [facebook, instagram, tiktok, youtube, whatsapp].filter(r => r && r.trim());
+          const redes = redesArray.length > 0 ? redesArray.join(', ') : '';
+
+          console.log(`    ✅ ${aliado}: Web="${web}", Tel="${celular}", Redes="${redes}", Marca="${personalBrand}"`);
 
           projects.push({
             id: projectId,
