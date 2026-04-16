@@ -47,27 +47,31 @@ export async function fetchProjectsFromSheet() {
       try {
         const sheetName = `${aliado} - operativo`;
         console.log(`  📖 Leyendo ${sheetName}...`);
-        const operativoData = await getSheetData(sheetName, 'A:F');
-
-        console.log(`    📋 Filas leídas: ${operativoData.length}`);
-        operativoData.slice(0, 15).forEach((row, idx) => {
-          console.log(`      [Fila ${idx}] A:"${row[0] || ''}" | B:"${row[1] || ''}" | E:"${row[4] || ''}" | F:"${row[5] || ''}"`);
-        });
+        const operativoData = await getSheetData(sheetName, 'A:Z');
 
         if (operativoData.length > 0) {
+          // Helper para buscar etiquetas (case-insensitive, trim)
+          const findValue = (keyword, colB = 1) => {
+            const row = operativoData.find(r =>
+              r[0]?.toLowerCase().trim().includes(keyword.toLowerCase())
+            );
+            return row?.[colB] || '';
+          };
+
           // Buscar datos en columnas A:B
-          const web = operativoData.find(r => r[0]?.includes('Página Web'))?.[1] || '';
-          const celular = operativoData.find(r => r[0]?.includes('Celular'))?.[1] || '';
-          const objective = operativoData.find(r => r[0]?.includes('Objetivo'))?.[1] || '';
-          const personalBrand = operativoData.find(r => r[0]?.includes('Estrategia'))?.[1] || '';
+          const web = findValue('página web', 1);
+          const celular = findValue('celular', 1);
+          const correo = findValue('correo', 1);
+          const objective = findValue('objetivo', 1);
+          const personalBrand = findValue('estrategia', 1);
 
-          // Buscar redes en columnas E:F
-          const facebook = operativoData.find(r => r[4]?.includes('Facebook'))?.[5] || '';
-          const instagram = operativoData.find(r => r[4]?.includes('Instagram'))?.[5] || '';
-          const tiktok = operativoData.find(r => r[4]?.includes('TikTok'))?.[5] || '';
-          const redes = [facebook, instagram, tiktok].filter(r => r).join(', ');
+          // Buscar redes en columnas E:F (column index 4:5)
+          const facebook = findValue('facebook', 5);
+          const instagram = findValue('instagram', 5);
+          const tiktok = findValue('tiktok', 5);
+          const redes = [facebook, instagram, tiktok].filter(r => r && r.trim()).join(', ');
 
-          console.log(`    Datos encontrados: Web="${web}", Celular="${celular}", Marca="${personalBrand}"`);
+          console.log(`    ✅ ${aliado}: Web="${web}", Tel="${celular}", Marca="${personalBrand}"`);
 
           projects.push({
             id: projectId,
@@ -79,10 +83,9 @@ export async function fetchProjectsFromSheet() {
             strategy: { personalBrand, competition: '', objective }
           });
           projectId++;
-          console.log(`    ✅ ${aliado} cargado`);
         }
       } catch (error) {
-        console.warn(`    ⚠️ No se cargó ${aliado}:`, error.message);
+        console.warn(`    ⚠️ Error cargando ${aliado}:`, error.message);
       }
     }
 
