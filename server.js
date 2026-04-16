@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 import { google } from 'googleapis';
 import { fileURLToPath } from 'url';
 import path from 'path';
-import { fetchProjectsFromSheet, fetchTasksFromSheet, fetchActivitiesFromSheet } from './googleSheets.js';
+import { fetchProjectsFromSheet, fetchTasksFromSheet, fetchActivitiesFromSheet, aliadoProjectIdMap } from './googleSheets.js';
 
 dotenv.config();
 
@@ -178,13 +178,36 @@ app.get('/api/projects/:projectId', authenticate, (req, res) => {
   res.json(project);
 });
 
+// Endpoint de debug: ver el mapping de aliados -> projectId
+app.get('/api/debug/mapping', authenticate, (req, res) => {
+  console.log('📊 Debug mapping solicitado');
+  const mapping = {
+    aliadoProjectIdMap,
+    projects: projects.map(p => ({ id: p.id, name: p.name })),
+    tasks: tasks.map(t => ({
+      id: t.id,
+      projectId: t.projectId,
+      description: t.description.substring(0, 30)
+    }))
+  };
+  console.log('📋 Mapping:', JSON.stringify(mapping));
+  res.json(mapping);
+});
+
 app.get('/api/tasks', authenticate, (req, res) => {
   const projectId = req.query.projectId;
-  let userTasks = tasks.filter(t => t.projectId === parseInt(projectId || 0));
 
+  // Si no hay projectId, retornar todas las tareas
   if (!projectId) {
-    userTasks = tasks;
+    return res.json(tasks);
   }
+
+  // Si hay projectId, filtrar por ese ID específicamente
+  const projectIdInt = parseInt(projectId);
+  const userTasks = tasks.filter(t => t.projectId === projectIdInt);
+
+  console.log(`📋 GET /api/tasks?projectId=${projectId} -> ${userTasks.length} tareas (de ${tasks.length} totales)`);
+  console.log(`   Task breakdown: ${tasks.map(t => `[ID:${t.id} ProjID:${t.projectId}]`).join(', ')}`);
 
   res.json(userTasks);
 });
