@@ -23,6 +23,9 @@ async function getSheetData(sheetName, range) {
   }
 }
 
+// Global map to store aliado -> projectId mapping
+let aliadoProjectIdMap = {};
+
 export async function fetchProjectsFromSheet() {
   try {
     console.log('📊 Leyendo PROYECTOS...');
@@ -33,12 +36,17 @@ export async function fetchProjectsFromSheet() {
       return [];
     }
 
-    const aliadosUnicos = new Set();
+    // Usar array en lugar de Set para mantener orden consistente
+    const aliadosUnicos = [];
+    const aliadosSet = new Set();
     proyectosRows.slice(1).forEach((row) => {
-      if (row[2]) aliadosUnicos.add(row[2]);
+      if (row[2] && !aliadosSet.has(row[2])) {
+        aliadosUnicos.push(row[2]);
+        aliadosSet.add(row[2]);
+      }
     });
 
-    console.log(`✅ Encontrados ${aliadosUnicos.size} aliados: ${Array.from(aliadosUnicos).join(', ')}`);
+    console.log(`✅ Encontrados ${aliadosUnicos.length} aliados: ${aliadosUnicos.join(', ')}`);
 
     const projects = [];
     let projectId = 1;
@@ -46,7 +54,10 @@ export async function fetchProjectsFromSheet() {
     for (const aliado of aliadosUnicos) {
       try {
         const sheetName = `${aliado} - operativo`;
-        console.log(`  📖 Leyendo ${sheetName}...`);
+        console.log(`  📖 Leyendo ${sheetName}... (ID: ${projectId})`);
+        // Guardar el mapping para usarlo en fetchTasksFromSheet
+        aliadoProjectIdMap[aliado] = projectId;
+
         const operativoData = await getSheetData(sheetName, 'A:Z');
 
         if (operativoData.length > 0) {
@@ -115,9 +126,6 @@ export async function fetchTasksFromSheet() {
     const proyectosRows = await getSheetData('PROYECTOS', 'A:S');
 
     console.log(`📋 Total filas leídas: ${proyectosRows.length}`);
-    if (proyectosRows.length > 0) {
-      console.log(`📌 Encabezados (fila 0): ${JSON.stringify(proyectosRows[0])}`);
-    }
 
     if (proyectosRows.length < 2) {
       console.warn('⚠️ No hay tareas en PROYECTOS');
@@ -129,27 +137,30 @@ export async function fetchTasksFromSheet() {
 
     proyectosRows.slice(1).forEach((row, idx) => {
       const designer = row[1]?.toLowerCase().trim() || '';
-      console.log(`  [Fila ${idx + 2}] Diseñador: "${designer}", Descripción: "${row[3] || ''}", Aliado: "${row[2] || ''}"`);
+      const aliado = row[2] || '';
 
       if (designer.includes('aylin')) {
         const progressStr = (row[16] || '0').toString().replace('%', '').trim();
         const progress = parseInt(progressStr) || 0;
 
+        // Obtener el projectId correcto basado en el aliado
+        const projectId = aliadoProjectIdMap[aliado] || 1;
+
         tasks.push({
           id: taskId,
-          projectId: 1,
+          projectId: projectId,
           description: row[3] || '',
           progress: progress,
           onTime: !row[9]?.toLowerCase().includes('atrasado'),
           hours: 8,
           dueDate: formatDate(row[11])
         });
-        console.log(`    ✅ Tarea agregada: "${row[3] || 'Sin descripción'}"`);
+        console.log(`  ✅ [${aliado}] Tarea: "${row[3] || 'Sin desc'}" -> projectId: ${projectId}`);
         taskId++;
       }
     });
 
-    console.log(`✅ ${tasks.length} tareas para Aylin`);
+    console.log(`✅ ${tasks.length} tareas para Aylin (distribuidas entre ${Object.keys(aliadoProjectIdMap).length} proyectos)`);
     return tasks;
   } catch (error) {
     console.error('❌ Error en fetchTasksFromSheet:', error.message);
