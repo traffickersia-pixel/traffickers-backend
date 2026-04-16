@@ -40,9 +40,10 @@ export async function fetchProjectsFromSheet() {
     const aliadosUnicos = [];
     const aliadosSet = new Set();
     proyectosRows.slice(1).forEach((row) => {
-      if (row[2] && !aliadosSet.has(row[2])) {
-        aliadosUnicos.push(row[2]);
-        aliadosSet.add(row[2]);
+      const aliado = row[2]?.trim() || '';
+      if (aliado && !aliadosSet.has(aliado)) {
+        aliadosUnicos.push(aliado);
+        aliadosSet.add(aliado);
       }
     });
 
@@ -53,11 +54,12 @@ export async function fetchProjectsFromSheet() {
 
     for (const aliado of aliadosUnicos) {
       try {
+        const aliadoNormalizado = aliado.trim();
         const sheetName = `${aliado} - operativo`;
-        console.log(`  📖 Leyendo "${aliado}" - operativo... (ProjectID: ${projectId})`);
-        // Guardar el mapping para usarlo en fetchTasksFromSheet
-        aliadoProjectIdMap[aliado] = projectId;
-        console.log(`     Mapeado: "${aliado}" = ProjectID ${projectId}`);
+        console.log(`  📖 Leyendo "${aliadoNormalizado}" - operativo... (ProjectID: ${projectId})`);
+        // Guardar el mapping para usarlo en fetchTasksFromSheet (NORMALIZADO)
+        aliadoProjectIdMap[aliadoNormalizado] = projectId;
+        console.log(`     ✅ Mapeado: "${aliadoNormalizado}" = ProjectID ${projectId}`);
 
         const operativoData = await getSheetData(sheetName, 'A:Z');
 
@@ -145,7 +147,7 @@ export async function fetchTasksFromSheet() {
 
     proyectosRows.slice(1).forEach((row, idx) => {
       const designer = row[1]?.toLowerCase().trim() || '';
-      const aliado = row[2] || '';
+      const aliado = row[2]?.trim() || '';
       const descripcion = row[3] || '';
 
       if (designer.includes('aylin')) {
@@ -153,7 +155,16 @@ export async function fetchTasksFromSheet() {
         const progress = parseInt(progressStr) || 0;
 
         // Obtener el projectId correcto basado en el aliado
-        const projectId = aliadoProjectIdMap[aliado] || 1;
+        // Buscar primero coincidencia exacta, luego case-insensitive
+        let projectId = aliadoProjectIdMap[aliado];
+        if (!projectId) {
+          // Buscar case-insensitive
+          const aliadoLower = aliado.toLowerCase();
+          const foundKey = Object.keys(aliadoProjectIdMap).find(key => key.toLowerCase() === aliadoLower);
+          projectId = foundKey ? aliadoProjectIdMap[foundKey] : 1;
+        }
+
+        console.log(`    TaskID ${taskId}: Aliado="${aliado}" -> ProjectID=${projectId}`);
 
         tasks.push({
           id: taskId,
